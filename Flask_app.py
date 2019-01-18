@@ -198,21 +198,18 @@ def add_to_favorites():
     return jsonify({'msg': 'API: Invalid Data Format'}), 400
 
 
-@app.route('/data/', methods=['DELETE'])
+@app.route('/data/<string:_title>', methods=['PUT'])
 @jwt_required
-def remove_from_favorites():
-    request_data = request.get_json()
-    if 'title' in request_data:
-        user = User.query.filter_by(username=get_jwt_identity()).first()
-        data = Data.query.filter_by(title=request_data['title']).first()
-        if data:
-            if data in user.data:
-                user.data.remove(data)
-                db.session.commit()
-                return jsonify({'msg': 'API: Data unlinked successfully'}), 200
-            return jsonify({'msg': 'API: Data not linked to user'}), 404
-        return jsonify({'msg': 'API: Data does not exist'}), 404
-    return jsonify({'msg': 'ERROR'}), 400
+def remove_from_favorites(_title):
+    user = User.query.filter_by(username=get_jwt_identity()).first()
+    data = Data.query.filter_by(title=_title).first()
+    if data:
+        if data in user.data:
+            user.data.remove(data)
+            db.session.commit()
+            return jsonify({'msg': 'API: Data unlinked successfully'}), 200
+        return jsonify({'msg': 'API: Data not linked to user'}), 404
+    return jsonify({'msg': 'API: Data does not exist'}), 404
 
 if __name__ == "__main__":
     app.run(debug=True)
