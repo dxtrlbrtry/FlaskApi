@@ -1,13 +1,13 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 import datetime
 
 # APP INITIALIZATION
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///C:/Projects/RESTApi/FlaskApi/database.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///C:/Zsolt/git_projects/FlaskApi/database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'key'
 db = SQLAlchemy(app)
@@ -15,11 +15,18 @@ jwt = JWTManager(app)
 
 
 # DECLARING MODELS
+
+links = db.Table('links',
+                db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
+                db.Column('data_id', db.Integer, db.ForeignKey('data.id')))
+
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     public_id = db.Column(db.String(80), unique=True)
     username = db.Column(db.String, nullable=False)
     password = db.Column(db.String, nullable=False)
+    data = db.relationship('Data', secondary=links, backref=db.backref('data_of', lazy='dynamic'))
 
 
 class Data(db.Model):
@@ -53,10 +60,8 @@ def create_user():
             db.session.add(new_user)
             db.session.commit()
             return jsonify({'msg': 'API: Created Successfully'}), 201
-        else:
-            return jsonify({'msg': 'API: User Already Exists'}), 409
-    else:
-        return jsonify({'msg': 'API: Error Creating User'}), 400
+        return jsonify({'msg': 'API: User Already Exists'}), 409
+    return jsonify({'msg': 'API: Error Creating User'}), 400
 
 
 @app.route('/users/', methods=['GET'])
@@ -68,6 +73,7 @@ def get_all_users():
         user_data['public_id'] = user.public_id
         user_data['username'] = user.username
         user_data['password'] = user.password
+        user_data['data'] = [{'title': dt.title, 'desc': dt.desc} for dt in user.data]
         output.append(user_data)
     return jsonify({'users': output, 'msg': 'API: Get Users Successful'}), 200
 
@@ -80,9 +86,9 @@ def get_one_user(_username):
         user_data['public_id'] = user.public_id
         user_data['username'] = user.username
         user_data['password'] = user.password
+        user_data['data'] = [{'title': dt.title, 'desc': dt.desc} for dt in user.data]
         return jsonify({'user': user_data, 'msg': 'API: Get User Successful'}), 200
-    else:
-        return jsonify({'msg': 'User not found'}), 404
+    return jsonify({'msg': 'User not found'}), 404
 
 
 @app.route('/users/<string:_username>', methods=['DELETE'])
@@ -93,8 +99,7 @@ def delete_user(_username):
         db.session.delete(user)
         db.session.commit()
         return jsonify({'msg': 'API: User Deleted Successfully'}), 200
-    else:
-        return jsonify({'msg': 'API: User does not exist'}), 404
+    return jsonify({'msg': 'API: User does not exist'}), 404
 
 
 @app.route('/login/', methods=['POST'])
@@ -106,12 +111,23 @@ def login():
             if check_password_hash(user.password, data['password']):
                 token = create_access_token(identity=data['username'], expires_delta=datetime.timedelta(minutes=30))
                 return jsonify({'token': token, 'msg': 'API: Login Successful'}), 200
-            else:
-                return jsonify({'msg': 'API: Invalid password'}), 400
-        else:
-            return jsonify({'msg': 'API: User does not exist'}), 404
-    else:
-        return jsonify({'msg': 'API: Invalid User Data'}), 400
+            return jsonify({'msg': 'API: Invalid password'}), 400
+        return jsonify({'msg': 'API: User does not exist'}), 404
+    return jsonify({'msg': 'API: Invalid User Data'}), 400
+
+
+@app.route('/users/', methods=['PUT'])
+def update_password():
+    data = request.get_json()
+    if valid_user(data):
+        user = User.query.filter_by(username=data['username']).first()
+        if user:
+            hashed_password = generate_password_hash(data['password'], method='sha256')
+            user.password = hashed_password
+            db.session.commit()
+            return jsonify({'msg': 'API: Reset successful'}), 200
+        return jsonify({'msg': 'API: User not found'}), 404
+    return jsonify({'msg': 'API: Invalid User Data'}), 400
 
 
 # DATA API
@@ -125,10 +141,8 @@ def create_data():
             db.session.add(new_data)
             db.session.commit()
             return jsonify({'msg': 'API: Data Created Successfully'}), 201
-        else:
-            return jsonify({'msg': 'API: Data Already Exists'}), 409
-    else:
-        return jsonify({'msg': 'API: Error Creating Data'}), 400
+        return jsonify({'msg': 'API: Data Already Exists'}), 409
+    return jsonify({'msg': 'API: Error Creating Data'}), 400
 
 
 @app.route('/data/', methods=['GET'])
@@ -153,8 +167,7 @@ def get_one_data(_title):
         data_object['title'] = data.title
         data_object['desc'] = data.desc
         return jsonify({'data': data_object, 'msg': 'API: Get Data Successful'}), 200
-    else:
-        return jsonify({'msg': 'Data not found'}), 404
+    return jsonify({'msg': 'Data not found'}), 404
 
 
 @app.route('/data/<string:_title>', methods=['DELETE'])
@@ -165,8 +178,24 @@ def delete_data(_title):
         db.session.delete(data)
         db.session.commit()
         return jsonify({'msg': 'API: Data Deleted Successfully'}), 200
-    else:
-        return jsonify({'msg': 'API: User does not exist'}), 404
+    return jsonify({'msg': 'API: User does not exist'}), 404
+
+
+@app.route('/data/', methods=['PUT'])
+@jwt_required
+def add_to_favorites():
+    request_data = request.get_json()
+    user = User.query.filter_by(username=get_jwt_identity()).first()
+    if 'title' in request_data:
+        data = Data.query.filter_by(title=request_data['title']).first()
+        if data:
+            if data not in user.data:
+                user.data.append(data)
+                db.session.commit()
+                return jsonify({'msg': 'API: Data linked to user'}), 200
+            return jsonify({'msg': 'API: Data already linked to user'}), 400
+        return jsonify({'msg': 'API: Data does not exist'}), 404
+    return jsonify({'msg': 'API: Invalid Data Format'}), 400
 
 
 if __name__ == "__main__":
