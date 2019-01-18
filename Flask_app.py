@@ -193,7 +193,7 @@ def add_to_favorites():
                 user.data.append(data)
                 db.session.commit()
                 return jsonify({'msg': 'API: Data linked to user'}), 200
-            return jsonify({'msg': 'API: Data already linked to user'}), 400
+            return jsonify({'msg': 'API: Data already linked to user'}), 409
         return jsonify({'msg': 'API: Data does not exist'}), 404
     return jsonify({'msg': 'API: Invalid Data Format'}), 400
 
