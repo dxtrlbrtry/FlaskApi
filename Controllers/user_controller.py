@@ -1,5 +1,5 @@
 from flask import request, jsonify, Blueprint
-from flask_jwt_extended import jwt_required, create_access_token
+from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 import datetime
@@ -56,10 +56,10 @@ def get_one_user(_username):
     return jsonify({'msg': 'User not found'}), 404
 
 
-@user_blueprint.route('/users/<string:_username>', methods=['DELETE'])
+@user_blueprint.route('/users/', methods=['DELETE'])
 @jwt_required
-def delete_user(_username):
-    user = User.query.filter_by(username=_username).first()
+def delete_user():
+    user = User.query.filter_by(username=get_jwt_identity()).first()
     if user:
         db.session.delete(user)
         db.session.commit()
@@ -82,14 +82,15 @@ def login():
 
 
 @user_blueprint.route('/users/', methods=['PUT'])
+@jwt_required
 def update_password():
     data = request.get_json()
-    if valid_user(data):
-        user = User.query.filter_by(username=data['username']).first()
+    if 'password' in data:
+        user = User.query.filter_by(username=get_jwt_identity()).first()
         if user:
             hashed_password = generate_password_hash(data['password'], method='sha256')
             user.password = hashed_password
             db.session.commit()
-            return jsonify({'msg': 'API: Reset successful'}), 200
+            return jsonify({'msg': 'API: Update successful'}), 200
         return jsonify({'msg': 'API: User not found'}), 404
     return jsonify({'msg': 'API: Invalid User Data'}), 400

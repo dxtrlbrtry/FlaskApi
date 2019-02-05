@@ -18,3 +18,4 @@ class Data(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(16), nullable=False)
     desc = db.Column(db.String(100), nullable=False)
+    created_by = db.Column(db.String(20), nullable=False)

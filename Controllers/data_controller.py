@@ -1,5 +1,5 @@
 from flask import request, jsonify, Blueprint
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from Models import *
 
 
@@ -18,7 +18,7 @@ def create_data():
     data = request.get_json()
     if valid_data(data):
         if not Data.query.filter_by(title=data['title']).first():
-            new_data = Data(title=data['title'], desc=data['desc'])
+            new_data = Data(title=data['title'], desc=data['desc'], created_by=get_jwt_identity())
             db.session.add(new_data)
             db.session.commit()
             return jsonify({'msg': 'API: Data Created Successfully'}), 201
