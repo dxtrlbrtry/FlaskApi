@@ -55,6 +55,19 @@ def get_one_user(_username):
         return jsonify({'user': user_data, 'msg': 'API: Get User Successful'}), 200
     return jsonify({'msg': 'User not found'}), 404
 
+@user_blueprint.route('/users/me/', methods=['GET'])
+@jwt_required
+def get_current_user():
+    user = User.query.filter_by(username=get_jwt_identity()).first()
+    if user:
+        user_data = {}
+        user_data['public_id'] = user.public_id
+        user_data['username'] = user.username
+        user_data['password'] = user.password
+        user_data['data'] = [{'title': dt.title, 'desc': dt.desc} for dt in user.data]
+        return jsonify({'user': user_data, 'msg': 'API: Get User Successful'}), 200
+    return jsonify({'msg': 'User not found'}), 404
+        
 
 @user_blueprint.route('/users/', methods=['DELETE'])
 @jwt_required
