@@ -11,7 +11,7 @@ user_data_association_blueprint = Blueprint('user_data_association_blueprint', _
 def add_to_favorites():
     request_data = request.get_json()
     user = User.query.filter_by(username=get_jwt_identity()).first()
-    if 'title' in request_data:
+    if 'id' in request_data:
         data = Data.query.filter_by(id=request_data['id']).first()
         if data:
             if data not in user.data:

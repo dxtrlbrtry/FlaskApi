@@ -109,8 +109,8 @@ def login():
 @jwt_required
 def update_password():
     data = request.get_json()
-    if 'password' in data:
-        user = User.query.filter_by(username=get_jwt_identity()).first()
+    if valid_user(data):
+        user = User.query.filter_by(username=data['username']).first()
         if user:
             hashed_password = generate_password_hash(data['password'], method='sha256')
             user.password = hashed_password
