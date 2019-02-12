@@ -40,10 +40,10 @@ def get_all_data():
     return jsonify({'data': output, 'msg': 'API: Get All Data Successful'}), 200
 
 
-@data_blueprint.route('/data/<int:_id>', methods=['GET'])
+@data_blueprint.route('/data/<string:_title>', methods=['GET'])
 @jwt_required
-def get_one_data(_id):
-    data = Data.query.filter_by(id=_id).first()
+def get_one_data(_title):
+    data = Data.query.filter_by(title=_title).first()
     if data:
         data_object = {}
         data_object['id'] = data.id
@@ -53,15 +53,15 @@ def get_one_data(_id):
     return jsonify({'msg': 'Data not found'}), 404
 
 
-@data_blueprint.route('/data/<int:_id>', methods=['DELETE'])
+@data_blueprint.route('/data/<string:_title>', methods=['DELETE'])
 @jwt_required
-def delete_data(_id):
-    data = Data.query.filter_by(id=_id).first()
+def delete_data(_title):
+    data = Data.query.filter_by(title=_title).first()
     if data:
         db.session.delete(data)
         db.session.commit()
         return jsonify({'msg': 'API: Data Deleted Successfully'}), 200
-    return jsonify({'msg': 'API: User does not exist'}), 404
+    return jsonify({'msg': 'API: Data does not exist'}), 404
 
 
 @data_blueprint.route('/data/<int:_id>', methods=['PUT'])
