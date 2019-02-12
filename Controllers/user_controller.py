@@ -106,7 +106,6 @@ def login():
 
 
 @user_blueprint.route('/users/', methods=['PUT'])
-@jwt_required
 def update_password():
     data = request.get_json()
     if valid_user(data):
