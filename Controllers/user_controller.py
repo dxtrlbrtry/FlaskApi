@@ -55,6 +55,7 @@ def get_one_user(_username):
         return jsonify({'user': user_data, 'msg': 'API: Get User Successful'}), 200
     return jsonify({'msg': 'User not found'}), 404
 
+
 @user_blueprint.route('/users/me/', methods=['GET'])
 @jwt_required
 def get_current_user():
@@ -67,12 +68,22 @@ def get_current_user():
         user_data['data'] = [{'title': dt.title, 'desc': dt.desc} for dt in user.data]
         return jsonify({'user': user_data, 'msg': 'API: Get User Successful'}), 200
     return jsonify({'msg': 'User not found'}), 404
-        
+
 
 @user_blueprint.route('/users/', methods=['DELETE'])
 @jwt_required
-def delete_user():
+def delete_current_user():
     user = User.query.filter_by(username=get_jwt_identity()).first()
+    if user:
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'msg': 'API: User Deleted Successfully'}), 200
+    return jsonify({'msg': 'API: User does not exist'}), 404
+
+
+@user_blueprint.route('/users/<string:_public_id>', methods=['DELETE'])
+def delete_user(_public_id):
+    user = User.query.filter_by(public_id=_public_id).first()
     if user:
         db.session.delete(user)
         db.session.commit()

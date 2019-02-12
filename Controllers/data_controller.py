@@ -33,31 +33,48 @@ def get_all_data():
     output = []
     for data in data_list:
         data_object = {}
+        data_object['id'] = data.id
         data_object['title'] = data.title
         data_object['desc'] = data.desc
         output.append(data_object)
     return jsonify({'data': output, 'msg': 'API: Get All Data Successful'}), 200
 
 
-@data_blueprint.route('/data/<string:_title>', methods=['GET'])
+@data_blueprint.route('/data/<int:_id>', methods=['GET'])
 @jwt_required
-def get_one_data(_title):
-    data = Data.query.filter_by(title=_title).first()
+def get_one_data(_id):
+    data = Data.query.filter_by(id=_id).first()
     if data:
         data_object = {}
+        data_object['id'] = data.id
         data_object['title'] = data.title
         data_object['desc'] = data.desc
         return jsonify({'data': data_object, 'msg': 'API: Get Data Successful'}), 200
     return jsonify({'msg': 'Data not found'}), 404
 
 
-@data_blueprint.route('/data/<string:_title>', methods=['DELETE'])
+@data_blueprint.route('/data/<int:_id>', methods=['DELETE'])
 @jwt_required
-def delete_data(_title):
-    data = Data.query.filter_by(title=_title).first()
+def delete_data(_id):
+    data = Data.query.filter_by(id=_id).first()
     if data:
         db.session.delete(data)
         db.session.commit()
         return jsonify({'msg': 'API: Data Deleted Successfully'}), 200
     return jsonify({'msg': 'API: User does not exist'}), 404
+
+
+@data_blueprint.route('/data/<int:_id>', methods=['PUT'])
+@jwt_required
+def update_data(_id):
+    request_data = request.get_json()
+    if valid_data(request_data):
+        data = Data.query.filter_by(id=_id).first()
+        if data:
+            data.title = request_data['title']
+            data.desc = request_data['desc']
+            db.session.commit()
+            return jsonify({'msg': 'API: Data Updated successfully'}), 200
+        return jsonify({'msg': 'API: Data not found'}), 404
+    return jsonify({'msg': 'Invalid Data'}), 400
 
